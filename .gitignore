@@ -1,0 +1,42 @@
+# Python キャッシュ
+__pycache__/
+*.pyc
+
+# 仮想環境
+.venv/
+venv/
+
+# ログ・一時ファイル
+*.log
+*.tmp
+*.json
+*.wandb
+*.parquet
+wandb/
+
+# モデルのログはできるようにする
+!IRM/irm_iclr_model/
+!IRM/irm_iclr_model/*.json
+
+# Jupyter Notebook チェックポイント
+.ipynb_checkpoints/
+
+# OS依存ファイル
+.DS_Store
+Thumbs.db
+
+*.arrow
+*.bin
+*.safetensors
+*.Python
+*.pth
+*.pt
+
+*.csv
+*.tsv
+
+# Large data
+IRM/data/iclr/*.csv
+
+# Large data
+IRM/data/iclr/*.csv
