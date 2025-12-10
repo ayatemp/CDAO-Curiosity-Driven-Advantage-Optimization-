@@ -19,7 +19,7 @@ python ppo_rdrl_lora_wandb.py \
 
 python ppo_rdrl_lora_wandb.py \
     --num-steps 200 \
-    --batch-size 4 \
+    --batch-size 16 \
     --mini-batch-size 2 \
     --wandb-project "my-rdrl-project" \
     --wandb-run-name "run-006-final-fix" \
@@ -27,15 +27,6 @@ python ppo_rdrl_lora_wandb.py \
     --lr 5e-6 \
     --init-kl-coef 0.2
 
-python ppo_rdrl_lora_wandb.py \
-    --num-steps 3 \
-    --batch-size 4 \
-    --mini-batch-size 2 \
-    --wandb-project "my-rdrl-project" \
-    --wandb-run-name "run-006-final-fix" \
-    --w-ext 0.7 --w-int 0.3 \
-    --lr 5e-6 \
-    --init-kl-coef 0.2
 
 
 python ppo_rdrl_lora_wandb.py \
@@ -364,6 +355,37 @@ def main():
     # --------------------------------------------------------
     # プロンプト群
     # --------------------------------------------------------
+    # base_inst = (
+    #     "You are an expert LLM researcher. Propose a novel and concrete research idea "
+    #     "about large language models.\n"
+    #     "Output ONLY in the following format:\n\n"
+    #     "Title: <concise LLM research title>\n"
+    #     "Abstract: <150-220 word abstract with motivation, approach, and contribution>\n"
+    # )
+    # templates = [
+    #     base_inst + "\nFocus on: {topic}.",
+    #     "Draft a research proposal about {topic} in the context of LLMs.\n" + base_inst,
+    #     "Describe a novel experiment regarding {topic} for large language models.\n" + base_inst,
+    # ]
+    
+    # topics = [
+    #     "alignment and safety", "multi-agent collaboration", "efficient training",
+    #     "world models", "tool use and APIs", "long-context reasoning",
+    #     "interpretability", "hallucination mitigation", "code generation",
+    #     "mathematical reasoning", "medical applications", "legal reasoning",
+    #     "multimodal understanding", "retrieval-augmented generation (RAG)",
+    #     "quantization and compression", "reinforcement learning from human feedback (RLHF)"
+    # ]
+
+    # problems = []
+    # for t in templates:
+    #     for top in topics:
+    #         problems.append(t.format(topic=top))
+    
+    # # さらにランダムに混ぜて、データ数を確保 (例: 3テンプレート x 16トピック x 5回 = 240個)
+    # problems = problems * 5
+    # random.shuffle(problems)
+
     base_inst = (
         "You are an expert LLM researcher. Propose a novel and concrete research idea "
         "about large language models.\n"
@@ -371,28 +393,91 @@ def main():
         "Title: <concise LLM research title>\n"
         "Abstract: <150-220 word abstract with motivation, approach, and contribution>\n"
     )
-    templates = [
-        base_inst + "\nFocus on: {topic}.",
-        "Draft a research proposal about {topic} in the context of LLMs.\n" + base_inst,
-        "Describe a novel experiment regarding {topic} for large language models.\n" + base_inst,
-    ]
-    
+
+    # 1. トピックを大幅に拡充 (約50個)
     topics = [
-        "alignment and safety", "multi-agent collaboration", "efficient training",
-        "world models", "tool use and APIs", "long-context reasoning",
-        "interpretability", "hallucination mitigation", "code generation",
-        "mathematical reasoning", "medical applications", "legal reasoning",
-        "multimodal understanding", "retrieval-augmented generation (RAG)",
-        "quantization and compression", "reinforcement learning from human feedback (RLHF)"
+        # Architecture & Training
+        "Mixture of Experts (MoE)", "State Space Models (Mamba/SSM)", "Sparse Attention",
+        "Rotary Positional Embeddings", "KV-Cache Optimization", "Layer Normalization variants",
+        "Curriculum Learning", "Continual Learning", "Federated Learning for LLMs",
+        
+        # Efficiency & Compression
+        "4-bit Quantization", "Knowledge Distillation", "Pruning techniques", 
+        "Low-Rank Adaptation (LoRA)", "CPU Inference Optimization", "FlashAttention",
+        
+        # Alignment & Safety
+        "Reinforcement Learning from Human Feedback (RLHF)", "Direct Preference Optimization (DPO)",
+        "Constitutional AI", "Red Teaming", "Jailbreak detection", "Bias mitigation",
+        "Hallucination detection", "Watermarking generated text",
+        
+        # Reasoning & Agents
+        "Chain of Thought (CoT)", "Tree of Thoughts", "Self-Consistency",
+        "Multi-Agent collaboration", "Tool use and API integration", "Code generation agents",
+        "Mathematical reasoning", "Symbolic reasoning integration",
+        
+        # Data & RAG
+        "Retrieval-Augmented Generation (RAG)", "Synthetic data generation", 
+        "Data deduplication strategies", "Multilingual instruction tuning", 
+        "Long-context understanding (100k+ tokens)", "Vector database optimization",
+        
+        # Specific Domains
+        "Medical diagnosis assistance", "Legal contract analysis", "Financial forecasting",
+        "Educational tutoring systems", "Creative writing support", "Translation of low-resource languages"
+    ]
+
+    # 2. 「観点」や「制約」を追加 (ここが掛け算の肝です)
+    perspectives = [
+        "computational efficiency", "memory constraints", "interpretability and transparency",
+        "robustness against adversarial attacks", "human-like reasoning", "cost-effective training",
+        "scalability to billions of users", "ethical considerations", "reducing training time",
+        "improving factual accuracy"
+    ]
+
+    # 3. テンプレートを増やして組み合わせる
+    # {topic} と {perspective} を埋め込む
+    templates = [
+        # Pattern A: 単純なトピック指定
+        "Draft a research proposal about {topic} in the context of LLMs.\n" + base_inst,
+        
+        # Pattern B: 観点(perspective)を重視
+        "Propose a research experiment improving {topic} with a focus on {perspective}.\n" + base_inst,
+        
+        # Pattern C: 課題解決型
+        "Describe a novel method to address the challenges of {topic}, specifically targeting {perspective}.\n" + base_inst,
+        
+        # Pattern D: 比較・分析
+        "Write an abstract analyzing the trade-offs in {topic} regarding {perspective}.\n" + base_inst,
+        
+        # Pattern E: 未来志向
+        "Envision the next generation of {topic} aimed at {perspective}. Write a proposal.\n" + base_inst,
     ]
 
     problems = []
-    for t in templates:
-        for top in topics:
-            problems.append(t.format(topic=top))
     
-    # さらにランダムに混ぜて、データ数を確保 (例: 3テンプレート x 16トピック x 5回 = 240個)
-    problems = problems * 5
+    # 全組み合わせを作成: 
+    # Topics(約45) x Perspectives(10) x Templates(一部) ≒ 1000〜1500パターン
+    for top in topics:
+        for persp in perspectives:
+            # ランダムにテンプレートを選んで適用する、あるいは全テンプレートを回す
+            # ここでは全テンプレートを回すと多すぎる(45*10*5=2250)ので、
+            # 各トピック・観点のペアにつき、テンプレートを全適用します
+            for t in templates:
+                # テンプレート内に {perspective} がない場合もあるので分岐しても良いが、
+                # 今回は全てのテンプレートに追加情報として付与する形式にするか、フォーマットを使う
+                
+                # 単純化: テンプレート文字列に {perspective} が含まれていれば埋め込み、なければ無視
+                try:
+                    txt = t.format(topic=top, perspective=persp)
+                except KeyError:
+                    # perspectiveを使わないテンプレートの場合
+                    txt = t.format(topic=top)
+                
+                problems.append(txt)
+    
+    # 重複削除 (念のため)
+    problems = list(set(problems))
+    
+    # シャッフル
     random.shuffle(problems)
     
     print(f"[INFO] Generated {len(problems)} diverse prompts.")
