@@ -25,9 +25,14 @@ python ppo_rdrl_lora_wandb.py \
     --wandb-run-name "run-006-final-fix" \
     --w-ext 0.7 --w-int 0.3 \
     --lr 5e-6 \
-    --init-kl-coef 0.2
+    --init-kl-coef 0.05
 
-
+python ppo_rdrl_lora_wandb.py \
+    --num-steps 300 \
+    --wandb-project "my-rdrl-project" \
+    --wandb-run-name "run-010-release-brake" \
+    --lr 5e-6 \
+    --init-kl-coef 0.05
 
 python ppo_rdrl_lora_wandb.py \
     --num-steps 3 \
