@@ -577,6 +577,16 @@ def main():
         if args.debug_samples:
              print(f"[STEP {step+1}] Ext: {mean_ext:.3f}, Int: {mean_int:.3f}, Tot: {mean_total:.3f}")
 
+    save_dir = f"./saved_models/{args.wandb_run_name}" if args.wandb_run_name else "./saved_models/rdrl_experiment"
+    
+    print(f"\n[INFO] Saving model to {save_dir} ...")
+    policy_model.save_pretrained(save_dir)
+    
+    # 2. トークナイザーの保存（これがないと後で推論するとき困ります）
+    tok_policy.save_pretrained(save_dir)
+    
+    print("[INFO] Model & Tokenizer saved successfully!")
+
     print("\n=== DONE ===")
     # 最後に W&B セッションを終了
     wandb.finish()
