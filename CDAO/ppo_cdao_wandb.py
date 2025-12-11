@@ -9,7 +9,7 @@ RDRL: Residual-Based Curiosity Driven RL (Research Idea Generation)
  - 統合: Gated Hybrid (品質が低いと好奇心報酬は無効)
 
 
- python ppo_cdao_wandb.py \
+python ppo_cdao_wandb.py \
     --num-steps 200 \
     --wandb-run-name "run-research-hybrid-01" \
     --w-ext 1.0 \
@@ -140,7 +140,7 @@ def compute_internal_curiosity_rewards(
     ResidualCuriosityModelで残差スコアを計算する。
     """
     rewards = []
-    device = policy_model.device
+    device = policy_model.pretrained_model.device
     
     # バッチデコードして再エンコード (正確なHidden取得のため)
     responses_text = tokenizer.batch_decode(response_tensors, skip_special_tokens=True)
@@ -191,6 +191,8 @@ def main():
     # W&B
     parser.add_argument("--wandb-project", type=str, default="rdrl-research", help="W&B Project Name")
     parser.add_argument("--wandb-run-name", type=str, default=None, help="W&B Run Name")
+
+    parser.add_argument("--debug-samples", action="store_true", help="Print debug samples")
     
     args = parser.parse_args()
     set_seed(args.seed)
