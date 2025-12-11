@@ -358,6 +358,9 @@ def main():
     # Save
     # --------------------------------------------------------
     save_dir = f"./saved_models/{args.wandb_run_name}" if args.wandb_run_name else "./saved_models/rdrl_final"
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+        
     print(f"\n[INFO] Saving model to {save_dir} ...")
     policy_model.save_pretrained(save_dir)
     tok_policy.save_pretrained(save_dir)
