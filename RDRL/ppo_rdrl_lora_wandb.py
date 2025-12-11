@@ -89,31 +89,56 @@ def shorten(text: str, width: int = 256) -> str:
 # 多様性サブスペースモデル
 # ============================================================
 
+# ============================================================
+# 多様性サブスペースモデル (修正版: 中心化対応)
+# ============================================================
+
 class DiversitySubspaceModel(nn.Module):
     """
-    事前に作成したサブスペース基底 (basis: [k, D]) を使って
-    hidden_state h: [..., D] を射影して多様性スコアを計算する簡易なモデル。
+    保存された基底(basis)と平均(mean)を使って、
+    h_centered = h - mean
+    z = h_centered @ basis.T
+    を計算し、そのノルムをスコアとする。
     """
-    def __init__(self, basis: torch.Tensor):
+    def __init__(self, path: str, device: torch.device):
         super().__init__()
-        with torch.no_grad():
-            q, _ = torch.linalg.qr(basis.T)  # [D, k]
-            ortho = q.T                      # [k, D]
-        self.register_buffer("basis", ortho)
+        # ファイルをロード
+        data = torch.load(path, map_location="cpu")
+        
+        # 辞書形式か、Tensor単体かで分岐（互換性のため）
+        if isinstance(data, dict):
+            basis = data["basis"]
+            # もしファイルにmeanが含まれていれば使う
+            if "mean" in data:
+                mean = data["mean"]
+            else:
+                # meanがない場合は警告を出してゼロベクトルにする
+                mean = torch.zeros(basis.shape[1])
+                print("[WARNING] 'mean' not found in basis file. Centering is disabled.")
+        else:
+            # 古い形式の場合は平均0とみなす（警告案件）
+            basis = data
+            mean = torch.zeros(basis.shape[1])
+            print("[WARNING] Basis file is old format (tensor only). Centering is disabled.")
+
+        # 直交化はPCAですんでいるのでそのまま使用
+        self.register_buffer("basis", basis.to(device))
+        self.register_buffer("mean", mean.to(device))
 
     def project(self, h: torch.Tensor) -> torch.Tensor:
         """
         h: [..., D]
-        return: [..., k]  (サブスペース上の座標)
+        return: [..., k]
         """
-        D = self.basis.shape[1]
-        assert h.shape[-1] == D, f"expected last dim {D}, got {h.shape[-1]}"
-
-        # h の device / dtype に合わせて basis をキャスト
-        basis = self.basis.to(device=h.device, dtype=h.dtype)
-
-        # (..., D) x (D, k) = (..., k)
-        return h @ basis.T
+        # dtype合わせ
+        if h.dtype != self.basis.dtype:
+            h = h.to(self.basis.dtype)
+            
+        # ★ ここが最重要修正点: 平均を引く (Centering) ★
+        h_centered = h - self.mean
+        
+        # 射影: (..., D) x (D, k) -> (..., k)
+        return h_centered @ self.basis.T
 
     def token_diversity(self, h: torch.Tensor) -> torch.Tensor:
         z = self.project(h)          # [..., k]
@@ -334,15 +359,17 @@ def main():
     # サブスペース basis & 外部RM
     # --------------------------------------------------------
     try:
-        basis = torch.load(args.subspace_basis_path, map_location="cpu")
-        basis = basis.to(device_policy)
-        subspace_model = DiversitySubspaceModel(basis).to(device_policy)
-        print(f"[INFO] subspace basis shape: {basis.shape}")
+        # パスとデバイスを渡して初期化する形に変更
+        subspace_model = DiversitySubspaceModel(args.subspace_basis_path, device_policy)
+        print(f"[INFO] Loaded subspace model from {args.subspace_basis_path}")
     except FileNotFoundError:
-        print(f"[WARNING] Subspace basis not found at {args.subspace_basis_path}. Using random init for demo.")
-        # ダミー basis (デモ用)
-        dummy_basis = torch.randn(768, 4096, device=device_policy) # [k, D] ※実際の次元に合わせてください
-        subspace_model = DiversitySubspaceModel(dummy_basis).to(device_policy)
+        print(f"[WARNING] Subspace file not found at {args.subspace_basis_path}. Using random init.")
+        # ダミー作成（辞書形式で保存してロードさせる）
+        # ※次元数はモデルに合わせて調整してください (例: Qwen-7Bなら4096)
+        dummy_basis = torch.randn(8, 3584) 
+        dummy_mean = torch.zeros(3584)
+        torch.save({"basis": dummy_basis, "mean": dummy_mean}, "dummy_basis.pt")
+        subspace_model = DiversitySubspaceModel("dummy_basis.pt", device_policy)
 
     rm_device = torch.device("cpu")
     # もしGPUメモリに余裕があればRMもGPUへ
