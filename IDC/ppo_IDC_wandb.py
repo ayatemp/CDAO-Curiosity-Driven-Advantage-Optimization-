@@ -257,9 +257,14 @@ def main():
     
     # Reference Model (LoRAの場合は共有されるが、trlの仕様上作成)
     ref_model = create_reference_model(model)
-    
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(ppo_config.model_name)
-    tokenizer.pad_token = tokenizer.eos_token
+    # pad_tokenが設定されていない、またはeosと同じ場合の安全策
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token # 一旦EOSにするが...
+        
+    # ★重要: パディング方向を左にする (生成モデルの学習では左詰めが鉄則)
+    tokenizer.padding_side = "left"
 
     # Trainer Initialization
     # (Datasetは後で動的に与えるため、ここではダミーあるいはNoneでも可だが、
@@ -347,8 +352,9 @@ def main():
         # --- 1. Generation (Rollout) ---
         # バッチ内のクエリごとに生成
         for query in batch["query"]:
-            query_tensor = tokenizer.encode(query, return_tensors="pt").to(device).squeeze(0)
-            query_tensors.append(query_tensor)
+            inputs = tokenizer(query, return_tensors="pt").to(DEVICE)
+            query_tensor = inputs.input_ids.squeeze(0)
+            attention_mask = inputs.attention_mask # これを取得！
             
             generation_kwargs = {
                 "min_length": -1,
@@ -358,6 +364,7 @@ def main():
                 "pad_token_id": tokenizer.eos_token_id,
                 "max_new_tokens": args.max_new_tokens,
                 "temperature": 0.95, # 創造性のために少し高め
+                "attention_mask": attention_mask.to(DEVICE)
             }
             
             # generate
@@ -419,6 +426,7 @@ def main():
             )
             wandb.log({"game_log": table}, step=step)
 
+        batch["response"] = batch_responses
         trainer.log_stats(stats, batch, final_rewards)
         
         # ターミナル進捗表示
