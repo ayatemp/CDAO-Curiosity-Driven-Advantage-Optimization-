@@ -17,7 +17,8 @@ python ppo_transformer_probe_hybrid.py \
     --w-int 0.3 \
     --gate-threshold -1.5
 
-python ppo_.py \
+
+python ppo_IDC_wandb_high_ver.py \
     --probe-path "transformer_creativity_probe_enhanced.pt" \
     --wandb-run-name "run-research-enhanced-v1" \
     --num-steps 500 \
@@ -430,14 +431,7 @@ def main():
                 columns=["Query", "Response", "Total", "Ext(Qual)", "Int(Creat)"],
                 data=texts_for_log
             )
-            wandb.log({"game_log": table})
-
-        print("-" * 50)
-        print(f"[Step {step}] Monitor")
-        print(f"Stats: Total={stats['env/reward_mean_total']:.2f} | Ext={np.mean(stats_ext):.2f} | Int={np.mean(stats_int):.2f}")
-        print(f"Query:    {texts_for_log[0][0][:50]}...") # クエリの先頭
-        print(f"Response: {texts_for_log[0][1]}")          # レスポンス全文を見る！
-        print("-" * 50)
+            wandb.log({"game_log": table}, step=step)
 
         # ★修正: batchにresponseを追加 (trlのログ要件)
         batch["response"] = batch_responses
