@@ -117,7 +117,7 @@ for epoch, batch in enumerate(tqdm(dataset)):
         "top_p": 1.0,
         "do_sample": True,
         "pad_token_id": tokenizer.pad_token_id,
-        "max_new_tokens": 32,
+        "max_new_tokens": 128,
     }
     response_tensors = ppo_trainer.generate(query_tensors, **generation_kwargs)
     
